@@ -1,6 +1,8 @@
 import math
 import random
+import statistics
 import streamlit as st
+import pandas as pd
 
 # Scenarios
 scenarios = {
@@ -91,24 +93,58 @@ for name, points in scenarios.items():
     depot = points["Depot"]
     locations_to_visit = [v for k, v in points.items() if k != "Depot"]
 
+    # Statistics Calculation
+    # Nearest Neighbor (Deterministic)
+    nn_route, nn_dist = nearest_neighbor_route(depot, locations_to_visit)
+    nn_time = nn_dist * 5
+
+    # Random Route (10 Trials)
+    random_trials = [random_route(depot, locations_to_visit) for _ in range(10)]
+    random_distances = [r[1] for r in random_trials]
+    random_times = [d * 5 for d in random_distances]
+
+    # Stats for Random
+    stats_data = {
+        "Metric": [
+            "Average Distance (miles)", "Minimum Distance (miles)", "Maximum Distance (miles)", "Std Dev Distance (miles)",
+            "Average Time (mins)", "Minimum Time (mins)", "Maximum Time (mins)", "Std Dev Time (mins)"
+        ],
+        "Nearest Neighbor": [
+            f"{nn_dist:.2f}", f"{nn_dist:.2f}", f"{nn_dist:.2f}", "0.00",
+            f"{nn_time:.2f}", f"{nn_time:.2f}", f"{nn_time:.2f}", "0.00"
+        ],
+        "Random (10 Trials)": [
+            f"{statistics.mean(random_distances):.2f}",
+            f"{min(random_distances):.2f}",
+            f"{max(random_distances):.2f}",
+            f"{statistics.stdev(random_distances):.2f}",
+            f"{statistics.mean(random_times):.2f}",
+            f"{min(random_times):.2f}",
+            f"{max(random_times):.2f}",
+            f"{statistics.stdev(random_times):.2f}"
+        ]
+    }
+
+    df_stats = pd.DataFrame(stats_data)
+    st.table(df_stats)
+
     col1, col2 = st.columns(2)
 
     with col1:
         st.subheader("Nearest Neighbor Route")
-        nn_route, nn_dist = nearest_neighbor_route(depot, locations_to_visit)
-        nn_time = nn_dist * 5
-        st.metric("Total Distance", f"{nn_dist:.2f} miles")
-        st.metric("Total Time", f"{nn_time:.2f} mins")
+        st.metric("Distance", f"{nn_dist:.2f} miles")
+        st.metric("Time", f"{nn_time:.2f} mins")
         with st.expander("Show Route Details"):
             st.write(nn_route)
 
     with col2:
-        st.subheader("Random Route")
-        r_route, r_dist = random_route(depot, locations_to_visit)
+        st.subheader("Example Random Route")
+        # Show the first random trial as an example
+        r_route, r_dist = random_trials[0]
         r_time = r_dist * 5
-        st.metric("Total Distance", f"{r_dist:.2f} miles")
-        st.metric("Total Time", f"{r_time:.2f} mins")
-        with st.expander("Show Route Details"):
+        st.metric("Distance", f"{r_dist:.2f} miles")
+        st.metric("Time", f"{r_time:.2f} mins")
+        with st.expander("Show Example Route Details"):
             st.write(r_route)
 
 if st.button("Re-run Simulation"):
